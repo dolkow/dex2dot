@@ -1,0 +1,9 @@
+.*
+!.gitignore
+*~
+*.pyc
+*.dot
+*.dex
+*.apk
+*.jar
+*.disass
