@@ -48,51 +48,42 @@ class DexFile(object):
 	def getfunc(self, clazz, mname, mtype):
 		''' The args should be in "mangled" format. '''
 
-		cur_clazz = None
-		cur_name = None
-
-		classre = re.compile(r"^\s*#\d+\s*: \(in (L\S+;)\)$")
-		infore  = re.compile(r"^\s*(name|type)\s*: '(\S+)'$")
-		catchre = re.compile(r"^\s*catches\s+: ")
-
-		func = None
-		code = None
-		info = None
-
 		# TODO: will need this eventually
 		#with open(self._get_disass_path(), encoding='utf-8-dex') as disass:
 		with open(self._get_disass_path()) as disass:
-			for line in disass:
-				line = line.strip('\r\n')
-				if info is not None:
-					if len(line.strip()) == 0:
-						# empty line after catches block ends function.
-						return code + ['-'*80] + info
-						# TODO: return createfunc(clazz, mname, mtype, code)
-					info.append(line)
-				elif code is not None:
-					if catchre.match(line):
-						info = [] # start collecting info
-						info.append(line)
-					else:
-						code.append(line)
+			generator = (line.strip('\r\n') for line in disass)
 
-				m = infore.match(line)
-				if m:
-					attr, val = m.groups()
-					if attr == 'name':
-						cur_name = val
-					else:
-						if (cur_clazz, cur_name, val) == (clazz, mname, mtype):
-							code = [] # start collecting code
-					continue
-
+			classre = re.compile(r"^\s*#\d+\s*: \(in (L\S+;)\)$")
+			namere  = re.compile(r"^\s*name\s*: '(\S+)'$")
+			typere  = re.compile(r"^\s*type\s*: '(\S+)'$")
+			for line in generator:
 				m = classre.match(line)
-				if m:
-					cur_clazz = m.group(1)
-					continue
+				if m and m.group(1) == clazz:
+					# found the correct class
+					# name and type lines should be immediately below.
+					n = namere.match(next(generator)).group(1)
+					t = typere.match(next(generator)).group(1)
+					if n == mname and t == mtype:
+						break # next loop, please!
+			else:
+				raise Exception('Method not found', clazz, mname, mtype)
 
-		raise Exception('function %s.%s %s not found' % (clazz, mname, mtype))
+			code = []
+			info = []
+			catchre = re.compile(r"^\s*catches\s+: ")
+			for line in generator:
+				m = catchre.match(line)
+				if m:
+					info.append(line)
+					break # next loop!
+				code.append(line)
+
+			for line in generator:
+				if len(line.strip()) == 0:
+					break # empty line means we're done!
+				info.append(line)
+			return code + ['-'*80] + info
+			# TODO: return createfunc(clazz, mname, mtype, code)
 
 if __name__ == '__main__':
 	import sys
