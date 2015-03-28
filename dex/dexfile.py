@@ -53,21 +53,27 @@ class DexFile(object):
 
 		classre = re.compile(r"^\s*#\d+\s*: \(in (L\S+;)\)$")
 		infore  = re.compile(r"^\s*(name|type)\s*: '(\S+)'$")
+		catchre = re.compile(r"^\s*catches\s+: ")
 
 		func = None
 		code = None
-		found_locals = False
+		info = None
 
 		# TODO: will need this eventually
 		#with open(self._get_disass_path(), encoding='utf-8-dex') as disass:
 		with open(self._get_disass_path()) as disass:
 			for line in disass:
 				line = line.strip('\r\n')
-				if code is not None:
-					if found_locals and len(line.strip()) == 0:
-						# empty line after locals block ends function.
-						return code
+				if info is not None:
+					if len(line.strip()) == 0:
+						# empty line after catches block ends function.
+						return code + ['-'*80] + info
 						# TODO: return createfunc(clazz, mname, mtype, code)
+					info.append(line)
+				elif code is not None:
+					if catchre.match(line):
+						info = [] # start collecting info
+						info.append(line)
 					else:
 						code.append(line)
 
@@ -79,7 +85,6 @@ class DexFile(object):
 					else:
 						if (cur_clazz, cur_name, val) == (clazz, mname, mtype):
 							code = [] # start collecting code
-							found_locals = False
 					continue
 
 				m = classre.match(line)
@@ -87,8 +92,6 @@ class DexFile(object):
 					cur_clazz = m.group(1)
 					continue
 
-				if line == '      locals        : ':
-					found_locals = True
 		raise Exception('function %s.%s %s not found' % (clazz, mname, mtype))
 
 if __name__ == '__main__':
