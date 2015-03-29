@@ -1,3 +1,4 @@
+from function import createfunc
 from os.path import dirname, splitext, exists, getmtime, isfile, islink
 from select import select
 from subprocess import Popen, PIPE
@@ -82,12 +83,10 @@ class DexFile(object):
 				if len(line.strip()) == 0:
 					break # empty line means we're done!
 				info.append(line)
-			return code + ['-'*80] + info
-			# TODO: return createfunc(clazz, mname, mtype, code)
+
+			return createfunc(self, clazz, mname, mtype, code, info)
 
 if __name__ == '__main__':
 	import sys
 	df = DexFile(sys.argv[1])
-	code = df.getfunc(*sys.argv[2:5])
-	for c in code:
-		print('code:', c)
+	df.getfunc(*sys.argv[2:5])
