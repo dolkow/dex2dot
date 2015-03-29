@@ -62,25 +62,22 @@ def makeblocks(dexfile, code, catches):
 
 	# find all branches
 	for addr, op, arg in codeparser(code):
-		import sys
-		print('code: %04x:' % addr, op, arg, file=sys.stderr)
-
 		if last_branched:
 			blockstarts.add(addr)
 
 		last_branched = True
 		if op.startswith('goto'):
 			addjmp(None, addr, int(arg.split()[0], 16))
-#		elif op.startswith('if-'):
-#			pass # TODO
+		elif op.startswith('if-'):
+			addjmp(True, addr, int(arg.split()[1], 16))
 #		elif op == 'packed-switch':
 #			pass # TODO
 #		elif op == 'sparse-switch':
 #			pass # TODO
 #		elif op == 'throw':
 #			pass # TODO
-#		elif op.startswith('return'):
-#			pass # TODO
+		elif op.startswith('return'):
+			addjmp(None, addr, -2) # -2 is the exit node
 		else:
 			last_branched = False
 	assert last_branched, 'no branch at function end'
