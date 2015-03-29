@@ -1,4 +1,5 @@
 import re
+from basicblock import makeblocks
 
 class AddressRange(object):
 	def __init__(self, start, end):
@@ -95,22 +96,5 @@ def createfunc(dexfile, clazz, mname, mtype, code, info):
 	access, regcount, code = parsemeta(code)
 	c, p, l = parseinfo(info, regcount)
 
-	print('catches:')
-	for catch in c:
-		print('  0x%04x - 0x%04x' % (catch.start, catch.end))
-		for exc, target in catch.jumpmap.items():
-			print('    %s -> 0x%04x' % (exc, target))
-
-	print('positions:')
-	for pos in p:
-		print('  0x%04x line=%d' % (pos.start, pos.line))
-
-	print('locals:')
-	for reg, ranges in enumerate(l):
-		for local in ranges:
-			stuff = (local.start, local.end, reg, local.name, local.type)
-			print('  0x%04x - 0x%04x reg=%d %s %s' % stuff)
-
-	#for c in code:
-	#	print('code:', c)
+	blocks = makeblocks(dexfile, code, c)
 
