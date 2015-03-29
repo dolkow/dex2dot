@@ -16,8 +16,9 @@ if __name__ == '__main__':
 		attrs['shape'] = 'box'
 		if block.ops:
 			ins = zip(block.addrs, block.ops, block.args)
-			ins = '\\n'.join('%04x: %-20s %s' % x for x in ins)
-			attrs['label'] = block.name + '\\n' + ins.replace('"', '\\"')
+			ins = '\n'.join('%04x: %-20s %s' % x for x in ins)
+			ins = ins.replace('\\', '\\\\').replace('"', '\\"')
+			attrs['label'] = block.name + '\\n' + ins
 		attrs = ','.join('%s="%s"' % item for item in attrs.items())
 		print(block.name, '[%s]' % attrs)
 
