@@ -1,4 +1,9 @@
-from function import createfunc
+#!/usr/bin/env python3
+#coding=utf8
+
+from .function import createfunc
+from .utf8dex import *
+
 from os.path import dirname, splitext, exists, getmtime, isfile, islink
 from select import select
 from subprocess import Popen, PIPE
@@ -6,7 +11,6 @@ from tempfile import mkstemp
 import os
 import re
 import sys
-import utf8dex
 
 class DexFile(object):
 	def __init__(self, path):
@@ -85,8 +89,3 @@ class DexFile(object):
 				info.append(line)
 
 			return createfunc(self, clazz, mname, mtype, code, info)
-
-if __name__ == '__main__':
-	import sys
-	df = DexFile(sys.argv[1])
-	df.getfunc(*sys.argv[2:5])

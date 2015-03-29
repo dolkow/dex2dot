@@ -1,0 +1,23 @@
+#!/usr/bin/env python3
+#coding=utf8
+
+from dex import DexFile
+
+if __name__ == '__main__':
+	import sys
+	df = DexFile(sys.argv[1])
+	blocks = df.getfunc(*sys.argv[2:5])
+
+	print('digraph {')
+
+	# first, print all nodes
+	for block in blocks:
+		print(block.name)
+
+	# then, all the edges
+	for block in blocks:
+		if block.next is not None:
+			print(block.name, '->', block.next.name)
+		# TODO: other block properties, like cond_next, switch, catches...
+
+	print('}')

@@ -1,3 +1,6 @@
+#!/usr/bin/env python3
+#coding=utf8
+
 import re
 
 class BasicBlock(object):
@@ -125,8 +128,4 @@ def makeblocks(dexfile, code, catches):
 
 		blocklist.add_instruction(addr, op, args)
 
-	for block in blocklist.blocks:
-		print(block.name, len(block.ops))
-		for instruction in zip(block.addrs, block.ops, block.args):
-			print('    %04x: %-20s %s' % instruction)
-		print()
+	return blocklist.blocks

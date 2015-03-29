@@ -1,5 +1,8 @@
+#!/usr/bin/env python3
+#coding=utf8
+
+from .basicblock import makeblocks
 import re
-from basicblock import makeblocks
 
 class AddressRange(object):
 	def __init__(self, start, end):
@@ -97,4 +100,5 @@ def createfunc(dexfile, clazz, mname, mtype, code, info):
 	c, p, l = parseinfo(info, regcount)
 
 	blocks = makeblocks(dexfile, code, c)
+	return blocks
 
