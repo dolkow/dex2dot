@@ -19,6 +19,8 @@ def parseinfo(info, regcount):
 		m = regionre.match(line)
 		if m:
 			start, end = (int(hx, 16) for hx in m.groups())
+			assert cur is None or cur.end <= start
+			assert start < end
 			cur = AddressRange(start, end)
 			cur.jumpmap = {}
 			catches.append(cur)
@@ -28,6 +30,7 @@ def parseinfo(info, regcount):
 		assert cur is not None
 		name = m.group(1)
 		target = int(m.group(2), 16)
+		assert name not in cur.jumpmap, 'BUG: %s is already in jumpmap' % name
 		cur.jumpmap[name] = target
 
 	positions = [] # AddressRanges with 'line', ordered by start address
@@ -64,6 +67,8 @@ def parseinfo(info, regcount):
 		var = AddressRange(start, end)
 		var.name = name
 		var.type = vtype
+		assert not local[reg] or local[reg][-1].end <= start
+		assert start < end
 		local[reg].append(var)
 
 	return catches, positions, local
