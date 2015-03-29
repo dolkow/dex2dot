@@ -16,8 +16,10 @@ if __name__ == '__main__':
 
 	# then, all the edges
 	for block in blocks:
-		if block.next is not None:
-			print(block.name, '->', block.next.name)
-		# TODO: other block properties, like cond_next, switch, catches...
+		assert block.succ is not None
+		for cond, target in block.succ.items():
+			# TODO: use cond for nice coloring
+			print(block.name, '->', target.name)
+		# TODO: catches!
 
 	print('}')
