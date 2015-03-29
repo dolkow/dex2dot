@@ -5,11 +5,11 @@ class AddressRange(object):
 		self.start = int(start) # inclusive
 		self.end = int(end) # exclusive
 
-def parseinfo(info):
+def parseinfo(info, regcount):
 	generator = (line for line in info)
 
 	assert next(generator).strip().startswith('catches')
-	catches = [] # CatchRegions, ordered by start address
+	catches = [] # AddressRanges with 'jumpmap', ordered by start address
 	regionre = re.compile(r"^\s*(0x[0-9a-f]{4}) - (0x[0-9a-f]{4})\s*$")
 	catchre  = re.compile(r"^\s*(<any>|L.*;) -> (0x[0-9a-f]{4})\s*$")
 	cur = None
@@ -30,7 +30,7 @@ def parseinfo(info):
 		target = int(m.group(2), 16)
 		cur.jumpmap[name] = target
 
-	positions = [] # line numbers, ordered by start address
+	positions = [] # AddressRanges with 'line', ordered by start address
 	posre = re.compile(r"^\s*(0x[0-9a-f]{4}) line=(\d+)\s*$")
 	pending = None
 	for line in generator:
@@ -48,7 +48,9 @@ def parseinfo(info):
 	if pending is not None:
 		pending.end = 2**16 # max size of a dalvik method
 
-	local = [] # local variable regions, ordered by start address
+	local = {} # register -> [ranges with 'name'&'type', ordered by start addr]
+	for r in range(regcount):
+		local[r] = []
 	localre = r"^\s*(0x[0-9a-f]{4}) - (0x[0-9a-f]{4}) reg=(\d+) (\S+) (\S+)\s*$"
 	localre = re.compile(localre)
 	for line in generator:
@@ -60,15 +62,33 @@ def parseinfo(info):
 		name  = m.group(4)
 		vtype = m.group(5)
 		var = AddressRange(start, end)
-		var.reg = reg
 		var.name = name
 		var.type = vtype
-		local.append(var)
+		local[reg].append(var)
 
 	return catches, positions, local
 
+def parsemeta(code):
+	metare = re.compile(r"^\s*(\S.*\S)\s+(?:-|:)\s*(|\S|\S.*\S)\s*$")
+	def expect(label, line):
+		m = metare.match(line)
+		assert m, 'Expected label %s, but line was "%s"' % (label, line)
+		return m.group(2)
+	access   = expect('access',     code[0])
+	_        = expect('code',       code[1])
+	regcount = expect('registers',  code[2])
+	_        = expect('ins',        code[3])
+	_        = expect('outs',       code[4])
+	_        = expect('insns size', code[5])
+	assert ' |[' in code[6], 'Expected function header, but was "%s"' % code[6]
+	assert ' |0000: ' in code[7], 'Expected code start, but was "%s"' % code[7]
+	access = int(access.split()[0], 16)
+	regcount = int(regcount)
+	return access, regcount, code[7:]
+
 def createfunc(dexfile, clazz, mname, mtype, code, info):
-	c, p, l = parseinfo(info)
+	access, regcount, code = parsemeta(code)
+	c, p, l = parseinfo(info, regcount)
 
 	print('catches:')
 	for catch in c:
@@ -81,9 +101,10 @@ def createfunc(dexfile, clazz, mname, mtype, code, info):
 		print('  0x%04x line=%d' % (pos.start, pos.line))
 
 	print('locals:')
-	for local in l:
-		stuff = (local.start, local.end, local.reg, local.name, local.type)
-		print('  0x%04x - 0x%04x reg=%d %s %s' % stuff)
+	for reg, ranges in l.items():
+		for local in ranges:
+			stuff = (local.start, local.end, reg, local.name, local.type)
+			print('  0x%04x - 0x%04x reg=%d %s %s' % stuff)
 
 	#for c in code:
 	#	print('code:', c)
