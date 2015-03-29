@@ -51,9 +51,9 @@ def parseinfo(info, regcount):
 	if pending is not None:
 		pending.end = 2**16 # max size of a dalvik method
 
-	local = {} # register -> [ranges with 'name'&'type', ordered by start addr]
+	local = [] # register -> [ranges with 'name'&'type', ordered by start addr]
 	for r in range(regcount):
-		local[r] = []
+		local.append([])
 	localre = r"^\s*(0x[0-9a-f]{4}) - (0x[0-9a-f]{4}) reg=(\d+) (\S+) (\S+)\s*$"
 	localre = re.compile(localre)
 	for line in generator:
@@ -106,7 +106,7 @@ def createfunc(dexfile, clazz, mname, mtype, code, info):
 		print('  0x%04x line=%d' % (pos.start, pos.line))
 
 	print('locals:')
-	for reg, ranges in l.items():
+	for reg, ranges in enumerate(l):
 		for local in ranges:
 			stuff = (local.start, local.end, reg, local.name, local.type)
 			print('  0x%04x - 0x%04x reg=%d %s %s' % stuff)
