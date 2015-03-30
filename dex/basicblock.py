@@ -81,8 +81,15 @@ def makeblocks(dexfile, code, catches):
 #			pass # TODO
 #		elif op == 'sparse-switch':
 #			pass # TODO
-#		elif op == 'throw':
-#			pass # TODO
+		elif op == 'throw':
+			# TODO: if we know what is thrown, jump to a matching catch instead
+			addjmp(None, addr, -2) # -2 is the exit node
+			for catchblock in catches:
+				if addr in catchblock:
+					if '<any>' in catchblock.jumpmap:
+						# okay, we won't be going to the exit after all.
+						addjmp(None, addr, catchblock.jumpmap['<any>'])
+					break # maximum one matching catch block
 		elif op.startswith('return'):
 			addjmp(None, addr, -2) # -2 is the exit node
 		else:
