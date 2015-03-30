@@ -9,6 +9,9 @@ class AddressRange(object):
 		self.start = int(start) # inclusive
 		self.end = int(end) # exclusive
 
+	def __contains__(self, addr):
+		return addr >= self.start and addr < self.end
+
 def parseinfo(info, regcount):
 	generator = iter(info)
 

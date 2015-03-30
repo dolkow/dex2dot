@@ -60,6 +60,13 @@ def makeblocks(dexfile, code, catches):
 
 	last_branched = True
 
+	# all try block starts are basic block starts. Ends too; they're exclusive.
+	for c in catches:
+		blockstarts.add(c.start)
+		blockstarts.add(c.end)
+		# and all exception handlers are basic block starts, too!
+		blockstarts.update(c.jumpmap.values())
+
 	# find all branches
 	for addr, op, arg in codeparser(code):
 		if last_branched:
@@ -87,6 +94,7 @@ def makeblocks(dexfile, code, catches):
 	fexit = BasicBlock('func_exit')
 	fexit.succ = {}
 	blocks = {-1:block, -2:fexit} # start addr -> block
+	cix = 0 # catch index
 	for addr, op, arg in codeparser(code):
 		if addr in blockstarts:
 			prev = block
@@ -96,6 +104,12 @@ def makeblocks(dexfile, code, catches):
 				prev.succ = {}
 			if None not in prev.succ:
 				prev.succ[None] = addr # link fallthrough
+			# already split by catches, so we only need to check on new BB
+			if cix < len(catches):
+				if addr >= catches[cix].end:
+					cix += 1
+				if cix < len(catches) and addr in catches[cix]:
+					block.catches = catches[cix].jumpmap
 		assert block.succ is None
 		block.addrs.append(addr)
 		block.ops.append(op)
@@ -106,8 +120,14 @@ def makeblocks(dexfile, code, catches):
 
 	# convert branch targets from address to block reference
 	for block in blocks.values():
-		for cond in block.succ:
-			dst_addr = block.succ[cond]
+		if block.catches is None:
+			block.catches = {}
+		for cond, dst_addr in block.succ.items():
 			block.succ[cond] = blocks[dst_addr]
+
+	# convert catch targets from address to block reference
+	for catchblock in catches:
+		for caught, target in catchblock.jumpmap.items():
+			catchblock.jumpmap[caught] = blocks[target]
 
 	return tuple(blocks.values())

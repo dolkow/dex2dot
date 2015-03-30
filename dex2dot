@@ -46,6 +46,11 @@ if __name__ == '__main__':
 			elif cond is True:
 				attrs['color'] = COLOR_COND_OK
 			print(block.name, '->', target.name, join(attrs))
-		# TODO: catches!
+		for caught, target in block.catches.items():
+			attrs = {}
+			attrs['color'] = COLOR_CATCH
+			attrs['taillabel'] = caught
+			attrs['labelfontcolor'] = COLOR_CATCH
+			print(block.name, '->', target.name, join(attrs))
 
 	print('}')
