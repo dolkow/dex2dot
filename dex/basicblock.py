@@ -16,7 +16,7 @@ class BasicBlock(object):
 
 def codeparser(code):
 	codere = re.compile(r"^[0-9a-f]+:(?: [0-9a-f]{4})+\s+(?:\.\.\. )?\s*\|"
-	                  + r"([0-9a-f]{4}): (\S+) (\S.*)$")
+	                  + r"([0-9a-f]{4}): (\S+)(?: (\S|\S.*\S))?\s*$")
 	stringre = re.compile(r'" // string@[0-9a-f]{4}$')
 	generator = iter(code)
 	found_switch_data = False
@@ -26,6 +26,7 @@ def codeparser(code):
 		assert m, 'BUG: code regex does not match line "%s"' % line
 		addr, op, args = m.groups()
 		addr = int(addr, 16)
+		args = args or ''
 
 		assert addr > last_addr
 		last_addr = addr
