@@ -3,24 +3,37 @@
 
 from dex import DexFile
 
+COLOR_CATCH    = '#cc0000'
+COLOR_COND_OK  = '#00cc00'
+
 if __name__ == '__main__':
 	import sys
 	df = DexFile(sys.argv[1])
 	blocks = df.getfunc(*sys.argv[2:5])
 
+	def escape(s):
+		return s.replace('\\', '\\\\').replace('"', '\\"')
+
+	def join(adict):
+		return '[%s]' % ','.join('%s="%s"' % item for item in adict.items())
+
 	print('digraph {')
+
+	attrs = {}
+	attrs['shape'] = 'box'
+	attrs['fontname'] = 'monospace'
+	print('node', join(attrs))
 
 	# first, print all nodes
 	for block in blocks:
 		attrs = {}
-		attrs['shape'] = 'box'
 		if block.ops:
 			ins = zip(block.addrs, block.ops, block.args)
-			ins = '\n'.join('%04x: %-20s %s' % x for x in ins)
-			ins = ins.replace('\\', '\\\\').replace('"', '\\"')
-			attrs['label'] = block.name + '\\n' + ins
-		attrs = ','.join('%s="%s"' % item for item in attrs.items())
-		print(block.name, '[%s]' % attrs)
+			ins = r'\l'.join('%04x: %-20s %s' % (a,o,escape(r)) for a,o,r in ins)
+			attrs['label'] = block.name + r'\n\n' + ins + r'\l'
+		if 'move-exception' in block.ops:
+			attrs['color'] = COLOR_CATCH
+		print(block.name, join(attrs))
 
 	# then, all the edges
 	for block in blocks:
@@ -28,12 +41,11 @@ if __name__ == '__main__':
 		for cond, target in block.succ.items():
 			attrs = {}
 			if type(cond) is int:
-				attrs['color'] = '#33cc00'
+				attrs['color'] = COLOR_COND_OK
 				# TODO: use value as edge label
 			elif cond is True:
-				attrs['color'] = '#00cc00'
-			attrs = ','.join('%s="%s"' % item for item in attrs.items())
-			print(block.name, '->', target.name, '[%s]' % attrs)
+				attrs['color'] = COLOR_COND_OK
+			print(block.name, '->', target.name, join(attrs))
 		# TODO: catches!
 
 	print('}')
