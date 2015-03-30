@@ -10,7 +10,7 @@ class AddressRange(object):
 		self.end = int(end) # exclusive
 
 def parseinfo(info, regcount):
-	generator = (line for line in info)
+	generator = iter(info)
 
 	assert next(generator).strip().startswith('catches')
 	catches = [] # AddressRanges with 'jumpmap', ordered by start address

@@ -18,7 +18,7 @@ def codeparser(code):
 	codere = re.compile(r"^[0-9a-f]+:(?: [0-9a-f]{4})+\s+(?:\.\.\. )?\s*\|"
 	                  + r"([0-9a-f]{4}): (\S+) (\S.*)$")
 	stringre = re.compile(r'" // string@[0-9a-f]{4}$')
-	generator = (line for line in code)
+	generator = iter(code)
 	found_switch_data = False
 	last_addr = -1
 	for line in generator:
