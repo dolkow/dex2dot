@@ -96,12 +96,13 @@ def parsemeta(code):
 	assert ' |0000: ' in code[7], 'Expected code start, but was "%s"' % code[7]
 	access = int(access.split()[0], 16)
 	regcount = int(regcount)
-	return access, regcount, code[7:]
+	fileoff = int(code[7].split(':')[0], 16)
+	return access, regcount, fileoff, code[7:]
 
 def createfunc(dexfile, clazz, mname, mtype, code, info):
-	access, regcount, code = parsemeta(code)
+	access, regcount, fileoff, code = parsemeta(code)
 	c, p, l = parseinfo(info, regcount)
 
-	blocks = makeblocks(dexfile, code, c)
+	blocks = makeblocks(dexfile, fileoff, code, c)
 	return blocks
 

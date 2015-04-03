@@ -3,8 +3,11 @@
 
 from dex import DexFile
 
-COLOR_CATCH    = '#cc0000'
-COLOR_COND_OK  = '#00cc00'
+COLOR_CATCH         = '#cc0000'
+COLOR_CATCH_TEXT    = '#660000'
+COLOR_SWITCH        = '#0099cc'
+COLOR_SWITCH_TEXT   = '#0033cc'
+COLOR_COND_OK       = '#00cc00'
 
 if __name__ == '__main__':
 	import sys
@@ -41,8 +44,9 @@ if __name__ == '__main__':
 		for cond, target in block.succ.items():
 			attrs = {}
 			if type(cond) is int:
-				attrs['color'] = COLOR_COND_OK
-				# TODO: use value as edge label
+				attrs['color'] = COLOR_SWITCH
+				attrs['taillabel'] = str(cond)
+				attrs['labelfontcolor'] = COLOR_SWITCH_TEXT
 			elif cond is True:
 				attrs['color'] = COLOR_COND_OK
 			print(block.name, '->', target.name, join(attrs))
@@ -50,7 +54,7 @@ if __name__ == '__main__':
 			attrs = {}
 			attrs['color'] = COLOR_CATCH
 			attrs['taillabel'] = caught
-			attrs['labelfontcolor'] = COLOR_CATCH
+			attrs['labelfontcolor'] = COLOR_CATCH_TEXT
 			print(block.name, '->', target.name, join(attrs))
 
 	print('}')

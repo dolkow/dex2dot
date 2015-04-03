@@ -12,6 +12,21 @@ import os
 import re
 import sys
 
+def _from_little_endian(bytes, signed):
+	out = 0
+	multiplier = 1
+	for b in bytes:
+		out += multiplier * b
+		multiplier <<= 8
+	if signed and (bytes[-1] & 0x80):
+		out -= multiplier
+	return out
+
+def le2u(bytes):
+	return _from_little_endian(bytes, False)
+def le2s(bytes):
+	return _from_little_endian(bytes, True)
+
 class DexFile(object):
 	def __init__(self, path):
 		self.path = path
@@ -89,3 +104,39 @@ class DexFile(object):
 				info.append(line)
 
 			return createfunc(self, clazz, mname, mtype, code, info)
+
+	def read_bytes(self, start, count):
+		from zipfile import ZipFile, is_zipfile
+		if is_zipfile(self.path):
+			z = ZipFile(self.path)
+			data = z.read('classes.dex')
+			return data[start:start+count]
+		else:
+			assert self.path.endswith('.dex')
+			from mmap import mmap, PROT_READ
+			with open(self.path, 'r+b') as f:
+				with mmap(f.fileno(), 0, prot=PROT_READ) as m:
+					return m[start:start+count]
+
+	def read_switch_table(self, funcstart, tableaddr):
+		# https://source.android.com/devices/tech/dalvik/dalvik-bytecode.html#packed-switch
+		addr = funcstart + 2 * tableaddr
+		bytes = self.read_bytes(addr, 4)
+		ident = le2u(bytes[0:2])
+		size  = le2u(bytes[2:4])
+
+		out = {}
+		assert ident in (0x0100, 0x0200)
+		if ident == 0x0100:
+			# packed switch
+			bytes = self.read_bytes(addr+4, size * 4 + 4)
+			first_key = le2s(bytes[0:4])
+			for i in range(size):
+				key = first_key + i
+				off = 4 + i*4
+				target = le2s(bytes[off:off+4])
+				out[key] = target
+		else:
+			# sparse switch
+			raise Exception('not yet implemented')
+		return out

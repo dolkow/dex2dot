@@ -47,7 +47,7 @@ def codeparser(code):
 
 		yield addr, op, args
 
-def makeblocks(dexfile, code, catches):
+def makeblocks(dexfile, fileoffset, code, catches):
 	blockstarts = set() # addresses of basic blocks' first instruction
 	jumps = {} # src addr -> {cond -> dst addr};
 	# cond True  = branch condition OK
@@ -78,8 +78,16 @@ def makeblocks(dexfile, code, catches):
 			addjmp(None, addr, int(arg.split()[0], 16))
 		elif op.startswith('if-'):
 			addjmp(True, addr, int(arg.split()[1], 16))
-#		elif op == 'packed-switch':
-#			pass # TODO
+		elif op == 'packed-switch':
+			table = int(arg.split()[1], 16)
+			assert table == addr + int(arg.split()[3], 16)
+
+			# 'default' is just a fallthrough to next BB, connected later
+			table = dexfile.read_switch_table(fileoffset, table)
+			for value, target in table.items():
+				assert type(value) is int
+				assert type(target) is int
+				addjmp(value, addr, addr+target) # switch targets are relative
 #		elif op == 'sparse-switch':
 #			pass # TODO
 		elif op == 'throw':
