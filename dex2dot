@@ -3,8 +3,8 @@
 
 from dex import DexFile
 
-COLOR_CATCH         = '#cc0000'
-COLOR_CATCH_TEXT    = '#660000'
+COLOR_CATCH         = '#cc000066'
+COLOR_CATCH_TEXT    = '#99000066'
 COLOR_SWITCH        = '#0099cc'
 COLOR_SWITCH_TEXT   = '#0033cc'
 COLOR_COND_OK       = '#00cc00'
@@ -21,6 +21,11 @@ if __name__ == '__main__':
 		return '[%s]' % ','.join('%s="%s"' % item for item in adict.items())
 
 	print('digraph {')
+
+	attrs = {}
+	attrs['splines'] = 'ortho'
+	attrs['ranksep'] = '2'
+	print('graph', join(attrs))
 
 	attrs = {}
 	attrs['shape'] = 'box'
@@ -55,6 +60,7 @@ if __name__ == '__main__':
 			attrs['color'] = COLOR_CATCH
 			attrs['taillabel'] = caught
 			attrs['labelfontcolor'] = COLOR_CATCH_TEXT
+			attrs['style'] = 'dotted'
 			print(block.name, '->', target.name, join(attrs))
 
 	print('}')
