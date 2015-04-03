@@ -3,3 +3,4 @@
 
 from .dexfile import DexFile
 from .basicblock import BasicBlock
+from .simplify import simplify

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 #coding=utf8
 
-from dex import DexFile
+from dex import DexFile, simplify
 
 COLOR_CATCH         = '#cc000066'
 COLOR_CATCH_TEXT    = '#99000066'
@@ -11,10 +11,10 @@ COLOR_COND_OK       = '#00cc00'
 
 COLOR_IMPLICIT      = '#999999'
 
-def dumpdot(func):
+def dumpdot(func, config):
 	blocks = func.blocks
 
-	def escape(s):
+	def esc(s):
 		return s.replace('\\', '\\\\').replace('"', '\\"')
 
 	def join(adict):
@@ -34,10 +34,11 @@ def dumpdot(func):
 
 	# first, print all nodes
 	for block in blocks:
+		simplify(block, config)
 		attrs = {}
 		if block.ops:
-			ins = zip(block.addrs, block.ops, block.args)
-			ins = r'\l'.join('%04x: %-20s %s' % (a,o,escape(r)) for a,o,r in ins)
+			ins = zip(block.addrs, map(esc, block.ops), map(esc, block.args))
+			ins = r'\l'.join('%04x: %-20s %s' % junk for junk in ins)
 			attrs['label'] = block.name + r'\n\n' + ins + r'\l'
 		elif block.name.startswith('func_'):
 			if block.name == 'func_entry':
@@ -95,6 +96,9 @@ def _parseargs():
 	parser.add_argument('type', metavar='methodtype', type=str,
 		help='e.g. "(CC)Ljava/lang/String;"')
 
+	parser.add_argument('-s', '--simple-syntax', action='store_true',
+		dest='simplify', help='rewrite some instructions in a Java-like syntax')
+
 	return parser.parse_args()
 
 if __name__ == '__main__':
@@ -102,4 +106,4 @@ if __name__ == '__main__':
 	import sys
 	df = DexFile(args.dexpath)
 	func = df.getfunc(args.clazz, args.name, args.type)
-	dumpdot(func)
+	dumpdot(func, args)
