@@ -138,5 +138,12 @@ class DexFile(object):
 				out[key] = target
 		else:
 			# sparse switch
-			raise Exception('not yet implemented')
+			bytes = self.read_bytes(addr+4, size * 8)
+			keys = bytes[0:size*4]
+			targets = bytes[size*4:]
+			for i in range(size):
+				off = i*4
+				key = le2s(keys[off:off+4])
+				target = le2s(targets[off:off+4])
+				out[key] = target
 		return out

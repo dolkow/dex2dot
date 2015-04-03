@@ -14,12 +14,20 @@ class BasicBlock(object):
 		self.catches = None
 		self.succ = None
 
+def executable(op):
+	return op not in (
+		'nop',
+		'packed-switch-data',
+		'sparse-switch-data',
+		'array-data',
+	)
+
 def codeparser(code):
 	codere = re.compile(r"^[0-9a-f]+:(?: [0-9a-f]{4})+\s+(?:\.\.\. )?\s*\|"
 	                  + r"([0-9a-f]{4}): (\S+)(?: (\S|\S.*\S))?\s*$")
-	stringre = re.compile(r'" // string@[0-9a-f]{4}$')
+	stringre = re.compile(r'" // string@[0-9a-f]+$')
 	generator = iter(code)
-	found_switch_data = False
+	found_data = False
 	last_addr = -1
 	for line in generator:
 		m = codere.match(line)
@@ -31,11 +39,11 @@ def codeparser(code):
 		assert addr > last_addr
 		last_addr = addr
 
-		if op in ('packed-switch-data', 'sparse-switch-data'):
-			found_switch_data = True
-			continue # don't include in any basic blocks
-
-		assert not found_switch_data, 'I assumed switch data was always last'
+		if not executable(op):
+			found_data = True
+		else:
+			# once we find nops or payloads, we expect no more real code
+			assert not found_data, 'BUG: real code after nop/switch/array-table'
 
 		if op.startswith('const-string'):
 			# join multi-line const strings
@@ -78,7 +86,7 @@ def makeblocks(dexfile, fileoffset, code, catches):
 			addjmp(None, addr, int(arg.split()[0], 16))
 		elif op.startswith('if-'):
 			addjmp(True, addr, int(arg.split()[1], 16))
-		elif op == 'packed-switch':
+		elif op == 'packed-switch' or op == 'sparse-switch':
 			table = int(arg.split()[1], 16)
 			assert table == addr + int(arg.split()[3], 16)
 
@@ -88,8 +96,6 @@ def makeblocks(dexfile, fileoffset, code, catches):
 				assert type(value) is int
 				assert type(target) is int
 				addjmp(value, addr, addr+target) # switch targets are relative
-#		elif op == 'sparse-switch':
-#			pass # TODO
 		elif op == 'throw':
 			# TODO: if we know what is thrown, jump to a matching catch instead
 			addjmp(None, addr, -2) # -2 is the exit node
@@ -103,7 +109,6 @@ def makeblocks(dexfile, fileoffset, code, catches):
 			addjmp(None, addr, -2) # -2 is the exit node
 		else:
 			last_branched = False
-	assert last_branched, 'no branch at function end'
 
 	# create basic blocks
 	block = BasicBlock('func_entry')
@@ -132,6 +137,11 @@ def makeblocks(dexfile, fileoffset, code, catches):
 		block.args.append(arg)
 		if addr in jumps:
 			block.succ = jumps[addr]
+
+	if not any(executable(op) for op in block.ops):
+		assert block.addrs[0] not in jumps.values()
+		block.succ = {}
+
 	assert block.succ is not None, 'function has no branch at the end'
 
 	# convert branch targets from address to block reference
