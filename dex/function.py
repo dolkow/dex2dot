@@ -4,6 +4,20 @@
 from .basicblock import makeblocks
 import re
 
+class Function(object):
+	def __init__(self, clazz, mname, mtype,
+	                   access, fileoff, regcount,
+	                   positions, localvars, blocks):
+		self.clazz    = clazz
+		self.name     = mname
+		self.type     = mtype
+		self.access   = access
+		self.fileoff  = fileoff
+		self.regcount = regcount
+		self.lines    = positions
+		self.locals   = localvars
+		self.blocks   = blocks
+
 class AddressRange(object):
 	def __init__(self, start, end):
 		self.start = int(start) # inclusive
@@ -102,7 +116,7 @@ def parsemeta(code):
 def createfunc(dexfile, clazz, mname, mtype, code, info):
 	access, regcount, fileoff, code = parsemeta(code)
 	c, p, l = parseinfo(info, regcount)
-
-	blocks = makeblocks(dexfile, fileoff, code, c)
-	return blocks
+	blox = makeblocks(dexfile, fileoff, code, c)
+	func = Function(clazz, mname, mtype, access, fileoff, regcount, p, l, blox)
+	return func
 

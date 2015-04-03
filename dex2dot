@@ -9,10 +9,10 @@ COLOR_SWITCH        = '#0099cc'
 COLOR_SWITCH_TEXT   = '#0033cc'
 COLOR_COND_OK       = '#00cc00'
 
-if __name__ == '__main__':
-	import sys
-	df = DexFile(sys.argv[1])
-	blocks = df.getfunc(*sys.argv[2:5])
+COLOR_IMPLICIT      = '#999999'
+
+def dumpdot(func):
+	blocks = func.blocks
 
 	def escape(s):
 		return s.replace('\\', '\\\\').replace('"', '\\"')
@@ -39,6 +39,20 @@ if __name__ == '__main__':
 			ins = zip(block.addrs, block.ops, block.args)
 			ins = r'\l'.join('%04x: %-20s %s' % (a,o,escape(r)) for a,o,r in ins)
 			attrs['label'] = block.name + r'\n\n' + ins + r'\l'
+		elif block.name.startswith('func_'):
+			if block.name == 'func_entry':
+				# entry block
+				info = block.name + r'\n'
+				info += r'\nclass:     ' + func.clazz
+				info += r'\lname:      ' + func.name
+				info += r'\ltype:      ' + func.type
+				info += r'\laccess:    ' + hex(func.access)
+				info += r'\lbyte addr: ' + hex(func.fileoff)
+				info += r'\l#regs:     ' + str(func.regcount)
+				info += r'\l'
+				attrs['label'] = info
+			attrs['fontcolor'] = COLOR_IMPLICIT
+			attrs['style'] = 'dashed'
 		if 'move-exception' in block.ops:
 			attrs['color'] = COLOR_CATCH
 		print(block.name, join(attrs))
@@ -64,3 +78,28 @@ if __name__ == '__main__':
 			print(block.name, '->', target.name, join(attrs))
 
 	print('}')
+
+def _parseargs():
+	import sys
+	import argparse
+
+	parser = argparse.ArgumentParser(
+		description='Create a .dot graph from a dalvik function')
+
+	parser.add_argument('dexpath', metavar='filepath', type=str,
+		help='path to apk, jar, zip or dex file')
+	parser.add_argument('clazz', metavar='class', type=str,
+		help='e.g. "Ljava/lang/String;"')
+	parser.add_argument('name', metavar='methodname', type=str,
+		help='e.g. "replace"')
+	parser.add_argument('type', metavar='methodtype', type=str,
+		help='e.g. "(CC)Ljava/lang/String;"')
+
+	return parser.parse_args()
+
+if __name__ == '__main__':
+	args = _parseargs()
+	import sys
+	df = DexFile(args.dexpath)
+	func = df.getfunc(args.clazz, args.name, args.type)
+	dumpdot(func)
