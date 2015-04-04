@@ -11,6 +11,13 @@ invokere = re.compile(invokere % (clz, typ, typ))
 
 typere = re.compile(typ)
 
+iputre = r'^(v[0-9]+), (v[0-9]+), (%s).([^:]+):(%s) // field@'
+iputre = re.compile(iputre % (clz,typ))
+
+commentre = re.compile(' // [a-z]+@[0-9a-f]+$')
+def rmcomment(s):
+	return commentre.sub('', s)
+
 def simplify(block, config):
 	if not config.simplify:
 		return
@@ -21,7 +28,7 @@ def simplify(block, config):
 
 		if op.startswith('const'):
 			op   = ' ='.join(args.split(',', 1))
-			op = re.sub(' // string@[0-9a-f]+$', '', op)
+			op = rmcomment(op)
 			args = ''
 		elif op in ('packed-switch', 'sparse-switch'):
 			op = 'switch %s' % args.split(',')[0]
@@ -62,6 +69,17 @@ def simplify(block, config):
 			args = ''
 		elif op.startswith('goto'):
 			op = 'goto %s' % (args.split('//')[0].strip())
+			args = ''
+		elif op == 'new-instance':
+			op = ' = new'.join(args.split(','))
+			op = rmcomment(op)
+			args = ''
+		elif op == 'iput-object':
+			# TODO: this can probably be generalized for all iput variants
+			match = iputre.match(args)
+			assert match
+			val, obj, objclazz, attrname, valclazz = match.groups()
+			op = '%s.%s = %s' % (obj, attrname, val)
 			args = ''
 
 		last_orig_op = block.ops[ix]
