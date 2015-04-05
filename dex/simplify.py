@@ -3,20 +3,61 @@
 
 import re
 
-clz  = r'L[^;]+;'
-typ = r'[VZBSCIJFD[]|' + clz
+def parselist(string, pattern, separator):
+	assert pattern.groups == 1
+	out = []
 
-invokere = r'^\{([v0-9 ,]*)\}, (%s)\.([^:]+):\(((?:%s)*)\)(%s) // method@'
-invokere = re.compile(invokere % (clz, typ, typ))
+	first = True
+	while True:
+		if not first:
+			if not string.startswith(separator):
+				break
+			string = string[len(separator):]
+		first = False
+		match = pattern.match(string)
+		if not match:
+			break
+		out.append(match.group(1))
+		string = string[match.end():]
 
-typere = re.compile(typ)
+	return string, out
 
-iputre = r'^(v[0-9]+), (v[0-9]+), (%s).([^:]+):(%s) // field@'
-iputre = re.compile(iputre % (clz,typ))
+REG  = re.compile(r'(v[0-9]+)')
+REGS = lambda data: parselist(data, REG, ', ')
+CLS  = re.compile(r'(L[^;]+;)')
+ID   = re.compile(r'([0-9A-Za-z_<>]+)') # okay, this doesn't cover all valid IDs
+TYP  = re.compile(r'([VZBSCIJFD[]|L[^;]+;)')
+TYPS = lambda data: parselist(data, TYP, '')
+CMT  = re.compile(r'\s*// ([a-z]+@[0-9a-f]+)$')
+
 
 commentre = re.compile(' // [a-z]+@[0-9a-f]+$')
 def rmcomment(s):
 	return commentre.sub('', s)
+
+class Mismatch(Exception):
+	def __init__(self, expected, data):
+		Exception.__init__(self, 'pattern not found in data', expected, data)
+
+def expect(data, *patterns):
+	out = []
+	for pattern in patterns:
+		if type(pattern) is str:
+			if not data.startswith(pattern):
+				raise Mismatch(pattern, data)
+			data = data[len(pattern):]
+		elif 'match' in dir(pattern):
+			match = pattern.match(data)
+			if not match:
+				raise Mismatch(pattern, data)
+			out.extend(match.groups())
+			data = data[match.end():]
+		else:
+			data, matched = pattern(data)
+			out.append(matched)
+	if out:
+		return (data,) + tuple(out)
+	return data
 
 def simplify(block, config):
 	if not config.simplify:
@@ -34,20 +75,16 @@ def simplify(block, config):
 			op = 'switch %s' % args.split(',')[0]
 			args = ''
 		elif op.startswith('invoke-'):
-			match = invokere.match(args)
-			assert match
+			args, vin, clazz, fname, vtypes, rtype, comment = expect(args,
+					'{', REGS, '}, ', CLS, '.', ID, ':(', TYPS, ')', TYP, CMT)
 
-			vin, clazz, fname, vtypes, rtype = match.groups()
-			vin = vin.split(', ')
 			instance = None
-
 			if op.startswith('invoke-static'):
 				instance = clazz
 			else:
 				instance = vin[0]
 				vin = vin[1:]
 
-			vtypes = typere.findall(vtypes)
 			for jx, vtype in enumerate(vtypes):
 				if vtype in 'JD':
 					# long and double are the only wide types.
@@ -76,10 +113,19 @@ def simplify(block, config):
 			args = ''
 		elif op == 'iput-object':
 			# TODO: this can probably be generalized for all iput variants
-			match = iputre.match(args)
-			assert match
-			val, obj, objclazz, attrname, valclazz = match.groups()
+			args, val, obj, objclazz, attrname, valclazz, cmt = expect(
+					args, REG, ', ', REG, ', ', CLS, '.', ID, ':', TYP, CMT)
 			op = '%s.%s = %s' % (obj, attrname, val)
+			args = ''
+		elif op == 'sget-object':
+			# TODO: this can probably be generalized for all sget variants
+			args, val, clazz, attrname, valclazz, comment = expect(
+					args, REG, ', ', CLS, '.', ID, ':', TYP, CMT)
+			op = '%s = %s.%s' % (val, clazz, attrname)
+			args = ''
+		elif op == 'check-cast':
+			args, reg, clazz, comment = expect(args, REG, ', ', CLS, CMT)
+			op = '%s = (%s)%s' % (reg, clazz, reg)
 			args = ''
 
 		last_orig_op = block.ops[ix]
