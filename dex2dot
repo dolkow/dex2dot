@@ -49,12 +49,18 @@ def dumpdot(func, config):
 			if block.name == 'func_entry':
 				# entry block
 				info = block.name + r'\n'
-				info += r'\nclass:     ' + func.clazz
-				info += r'\lname:      ' + func.name
-				info += r'\ltype:      ' + func.type
-				info += r'\laccess:    ' + hex(func.access)
-				info += r'\lbyte addr: ' + hex(func.fileoff)
-				info += r'\l#regs:     ' + str(func.regcount)
+				info += r'\nclass:     %s' % func.clazz
+				info += r'\lname:      %s' % func.name
+				info += r'\ltype:      %s' % func.type
+				info += r'\laccess:    %s' % hex(func.access)
+				info += r'\lbyte addr: %s' % hex(func.fileoff)
+				info += r'\l#regs:     %d' % func.regcount
+				info += r'\l#args:     %d' % func.argcount
+				# function args are always last.
+				for r in range(func.regcount-func.argcount, func.regcount):
+					v = func.locals[r][0]
+					assert v.start == 0
+					info += r'\l           v%d is %s (%s)' % (r, v.name, v.type)
 				info += r'\l'
 				attrs['label'] = info
 			attrs['fontcolor'] = COLOR_IMPLICIT

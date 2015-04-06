@@ -6,7 +6,7 @@ import re
 
 class Function(object):
 	def __init__(self, clazz, mname, mtype,
-	                   access, fileoff, regcount,
+	                   access, fileoff, regcount, argcount,
 	                   positions, localvars, blocks):
 		self.clazz    = clazz
 		self.name     = mname
@@ -14,6 +14,7 @@ class Function(object):
 		self.access   = access
 		self.fileoff  = fileoff
 		self.regcount = regcount
+		self.argcount = argcount
 		self.lines    = positions
 		self.locals   = localvars
 		self.blocks   = blocks
@@ -106,20 +107,22 @@ def parsemeta(code):
 	access   = expect('access',     code[0])
 	_        = expect('code',       code[1])
 	regcount = expect('registers',  code[2])
-	_        = expect('ins',        code[3])
+	argcount = expect('ins',        code[3])
 	_        = expect('outs',       code[4])
 	_        = expect('insns size', code[5])
 	assert ' |[' in code[6], 'Expected function header, but was "%s"' % code[6]
 	assert ' |0000: ' in code[7], 'Expected code start, but was "%s"' % code[7]
 	access = int(access.split()[0], 16)
 	regcount = int(regcount)
+	argcount = int(argcount)
 	fileoff = int(code[7].split(':')[0], 16)
-	return access, regcount, fileoff, code[7:]
+	return access, regcount, argcount, fileoff, code[7:]
 
 def createfunc(dexfile, clazz, mname, mtype, code, info):
-	access, regcount, fileoff, code = parsemeta(code)
+	access, regcount, argcount, fileoff, code = parsemeta(code)
 	c, p, l = parseinfo(info, regcount)
 	blox = makeblocks(dexfile, fileoff, code, c)
-	func = Function(clazz, mname, mtype, access, fileoff, regcount, p, l, blox)
+	func = Function(clazz, mname, mtype, access, fileoff,
+	                regcount, argcount, p, l, blox)
 	return func
 
