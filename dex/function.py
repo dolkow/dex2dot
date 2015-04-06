@@ -26,6 +26,9 @@ class AddressRange(object):
 	def __contains__(self, addr):
 		return addr >= self.start and addr < self.end
 
+	def __str__(self):
+		return '[%04x:%04x]' % (self.start, self.end)
+
 def parseinfo(info, regcount):
 	generator = iter(info)
 

@@ -34,7 +34,7 @@ def dumpdot(func, config):
 
 	# first, print all nodes
 	for block in blocks:
-		simplify(block, config)
+		simplify(func, block, config)
 		attrs = {}
 		if block.ops:
 			ins = zip(block.addrs, map(esc, block.ops), map(esc, block.args))
@@ -98,6 +98,9 @@ def _parseargs():
 
 	parser.add_argument('-s', '--simple-syntax', action='store_true',
 		dest='simplify', help='rewrite some instructions in a Java-like syntax')
+	parser.add_argument('-n', '--named-vars', action='store_true',
+		dest='namevars', help='(only with --simple-syntax) ' +
+		'replace registers with variable names where available')
 
 	return parser.parse_args()
 
