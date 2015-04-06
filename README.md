@@ -8,10 +8,10 @@ This script will build a .dot file of a single dalvik function. The result will 
 
 ## Dependencies
 
-You must have the dexdump on your $PATH.
+You must have dexdump (from the Android SDK) on your $PATH.
 
 Only tested on Linux.
 
-## What do I do with the .dot file?
+## What do I do with the .dot output?
 
 Look at it with a dot file viewer. I use xdot.
