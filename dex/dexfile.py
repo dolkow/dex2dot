@@ -74,9 +74,8 @@ class DexFile(object):
 	def getfunc(self, clazz, mname, mtype):
 		''' The args should be in "mangled" format. '''
 
-		# TODO: will need this eventually
-		#with open(self._get_disass_path(), encoding='utf-8-dex') as disass:
-		with open(self._get_disass_path()) as disass:
+		dpath = self._get_disass_path()
+		with open(dpath, encoding='utf-8', errors='dex') as disass:
 			log.info('looking for function %s.%s%s', clazz, mname, mtype)
 			generator = (line.strip('\r\n') for line in disass)
 
