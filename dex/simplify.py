@@ -47,6 +47,7 @@ TYP  = re.compile(r'(\[*(?:[VZBSCIJFD]|L[^;]+;))')
 TYPS = lambda data: parselist(data, TYP, '')
 ADDR = re.compile(r'([0-9a-f]{4,})')
 CMT  = re.compile(r'\s*// ([a-z]+@[0-9a-f]+)$')
+NUM  = re.compile(r'([0-9]+)')
 
 CMPOP = {'eq':'==', 'ne':'!=', 'le':'<=', 'lt':'<', 'ge':'>=', 'gt':'>'}
 
@@ -74,9 +75,32 @@ def expect(data, *patterns):
 		return (data,) + tuple(out)
 	return data
 
+def doublify(reg):
+	if reg[0] == 'v':
+		try:
+			regnum = int(reg[1:])
+		except ValueError:
+			return reg
+		return 'v%d~%d' % (regnum, regnum+1)
+	return reg
+
 def simplify(func, block, config):
 	if not config.simplify:
 		return
+
+	def nicetype(t):
+		# TODO: nicify functions as well (separate function?)
+		arraydepth = 0
+		while t.startswith('['):
+			t = t[1:]
+			arraydepth += 1
+		assert len(t) > 0
+		if t.startswith('L'):
+			# TODO: use "java.lang.String" instead of "Ljava/lang/String;"
+			return t + '[]' * arraydepth
+		primitives = {'Z':'boolean', 'B':'byte', 'C':'char', 'S':'short',
+		              'I':'int', 'J':'long', 'F':'float', 'D':'double'}
+		return primitives[t]  + '[]' * arraydepth
 
 	REG.replacements = func.locals if config.namevars else None
 	last_orig_op = None
@@ -91,6 +115,8 @@ def simplify(func, block, config):
 			m = CMT.search(args)
 			if m:
 				args = args[:m.start()]
+			if op.endswith('-class'):
+				args += '.class'
 			op = '%s = %s' % (v, args)
 			args = ''
 		elif op in ('packed-switch', 'sparse-switch'):
@@ -113,7 +139,7 @@ def simplify(func, block, config):
 					# long and double are the only wide types.
 					regnum = int(vin[jx][1:])
 					assert len(vin) > jx and vin[jx] == 'v%d' % (regnum+1)
-					vin[jx] += '~%d' % (regnum+1)
+					vin[jx] = doublify(vin[jx])
 			assert len(vin) == len(vtypes)
 
 			op = '%s.%s(%s)' % (instance, fname, ', '.join(vin))
@@ -149,7 +175,7 @@ def simplify(func, block, config):
 			op = '%s = %s.%s' % (val, clazz, attrname)
 			assert args == ''
 		elif op == 'check-cast':
-			args, reg, clazz, comment = expect(args, REG, ', ', CLS, CMT)
+			args, reg, clazz, comment = expect(args, REG, ', ', TYP, CMT)
 			op = '%s = (%s)%s' % (reg, clazz, reg)
 			assert args == ''
 		elif op.startswith('if-'):
@@ -166,7 +192,44 @@ def simplify(func, block, config):
 			args, var = expect(args, REG)
 			op = '%s = <caught exception>' % var
 			args = ''
-		elif op in ('throw', 'return'):
+		elif op.startswith('move'):
+			#note: move-exception and move-result already handled above.
+			args, dst, src = expect(args, REG, ', ', REG)
+			op = '%s = %s' % (dst, src)
+			if dst == src:
+				# can happen if we're switching the register for the variable
+				op += ' (switching register)'
+			assert args == ''
+		elif op.startswith('cmp'):
+			args, dst, left, right = expect(args, REG, ', ', REG, ', ', REG)
+			assert args == ''
+			if op.endswith('double') or op.endswith('long'):
+				left  = doublify(left)
+				right = doublify(right)
+			op = '%s = %s %s, %s' % (dst, op, left, right)
+		elif 'new-array' in op:
+			if op.startswith('filled-'):
+				args, initdata = expect(args, '{', REGS, '}')
+				size = len(initdata)
+				dst = None
+			else:
+				args, dst, size = expect(args, REG, ', ', REG)
+				initdata = None
+			args, typ, comment = expect(args, ', ', TYP, CMT)
+			assert args == ''
+
+			op = ''
+			if dst is not None:
+				op = '%s = ' % dst
+
+			assert typ.startswith('[')
+			typ = nicetype(typ)
+			base, extradepth = typ.split('[]', 1)
+			op += 'new %s[%s]%s' % (base, size, extradepth)
+			if initdata is not None:
+				# TODO: assert type(size) is int
+				op += ' {%s}' % ', '.join(initdata)
+		elif op in ('throw', 'return', 'return-object'):
 			args, var = expect(args, REG)
 			assert args == ''
 			op = '%s %s' % (op, var)
