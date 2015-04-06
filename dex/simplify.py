@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 #coding=utf8
 
+import logging as log
+log = log.getLogger(__name__)
 import re
 
 def parselist(string, pattern, separator):
@@ -82,6 +84,7 @@ def simplify(func, block, config):
 		REG.addr = addr
 		op   = block.ops[ix]
 		args = block.args[ix]
+		log.debug('    before: %04x %s %s', addr, op, args)
 
 		if op.startswith('const'):
 			args, v = expect(args, REG, ', ')
@@ -123,6 +126,7 @@ def simplify(func, block, config):
 			if ix > 0 and last_orig_op.startswith('invoke-'):
 				funccall = block.ops[ix-1]
 				block.ops[ix-1] = '↓'
+				log.debug('    stole %s from %04x', funccall, block.addrs[ix-1])
 			op = '%s = %s' % (var, funccall)
 			assert args == ''
 		elif op.startswith('goto'):
@@ -174,6 +178,7 @@ def simplify(func, block, config):
 			assert not config.namevars, ('unhandled instruction type "%s"; ' +
 					'might cause problems when variable names are enabled') % op
 
+		log.debug('    after:  %04x %s %s', addr, op, args)
 		last_orig_op = block.ops[ix]
 		block.ops[ix] = op
 		block.args[ix] = args

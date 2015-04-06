@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 #coding=utf8
 
+import logging as log
+log = log.getLogger(__name__)
 import re
 
 class BasicBlock(object):
@@ -56,6 +58,7 @@ def codeparser(code):
 		yield addr, op, args
 
 def makeblocks(dexfile, fileoffset, code, catches):
+	log.info('creating basic blocks...')
 	blockstarts = set() # addresses of basic blocks' first instruction
 	jumps = {} # src addr -> {cond -> dst addr};
 	# cond True  = branch condition OK
@@ -70,6 +73,7 @@ def makeblocks(dexfile, fileoffset, code, catches):
 	last_branched = True
 
 	# all try block starts are basic block starts. Ends too; they're exclusive.
+	log.info('  adding block boundaries from try/catch/finally')
 	for c in catches:
 		blockstarts.add(c.start)
 		blockstarts.add(c.end)
@@ -77,6 +81,7 @@ def makeblocks(dexfile, fileoffset, code, catches):
 		blockstarts.update(c.jumpmap.values())
 
 	# find all branches
+	log.info('  adding block boundaries from branches')
 	for addr, op, arg in codeparser(code):
 		if last_branched:
 			blockstarts.add(addr)
@@ -109,8 +114,10 @@ def makeblocks(dexfile, fileoffset, code, catches):
 			addjmp(None, addr, -2) # -2 is the exit node
 		else:
 			last_branched = False
+	log.debug('  block starts: %s', ', '.join('%x' % a for a in blockstarts))
 
 	# create basic blocks
+	log.info('  creating block objects')
 	block = BasicBlock('func_entry')
 	fexit = BasicBlock('func_exit')
 	fexit.succ = {}
@@ -144,6 +151,7 @@ def makeblocks(dexfile, fileoffset, code, catches):
 
 	assert block.succ is not None, 'function has no branch at the end'
 
+	log.info('  converting from addr to block reference')
 	# convert branch targets from address to block reference
 	for block in blocks.values():
 		if block.catches is None:

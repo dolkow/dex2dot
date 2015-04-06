@@ -2,6 +2,8 @@
 #coding=utf8
 
 from dex import DexFile, simplify
+import logging
+log = logging.getLogger('dex2dot')
 
 COLOR_CATCH         = '#cc000066'
 COLOR_CATCH_TEXT    = '#99000066'
@@ -12,6 +14,7 @@ COLOR_COND_OK       = '#00cc00'
 COLOR_IMPLICIT      = '#999999'
 
 def dumpdot(func, config):
+	log.info('dumping function %s...', func.name)
 	blocks = func.blocks
 
 	def esc(s):
@@ -33,7 +36,9 @@ def dumpdot(func, config):
 	print('node', join(attrs))
 
 	# first, print all nodes
+	log.info('  dumping blocks')
 	for block in blocks:
+		log.debug('    %s', block.name)
 		simplify(func, block, config)
 		attrs = {}
 		if block.ops:
@@ -59,6 +64,7 @@ def dumpdot(func, config):
 		print(block.name, join(attrs))
 
 	# then, all the edges
+	log.info('  dumping edges')
 	for block in blocks:
 		assert block.succ is not None
 		for cond, target in block.succ.items():
@@ -96,6 +102,10 @@ def _parseargs():
 	parser.add_argument('type', metavar='methodtype', type=str,
 		help='e.g. "(CC)Ljava/lang/String;"')
 
+	parser.add_argument('-v', '--verbose', action='store_true',
+		dest='verbose', help='be chatty about what we\'re doing')
+	parser.add_argument('-d', '--debug', action='store_true',
+		dest='debug', help='be VERY chatty about what we\'re doing')
 	parser.add_argument('-s', '--simple-syntax', action='store_true',
 		dest='simplify', help='rewrite some instructions in a Java-like syntax')
 	parser.add_argument('-n', '--named-vars', action='store_true',
@@ -106,7 +116,12 @@ def _parseargs():
 
 if __name__ == '__main__':
 	args = _parseargs()
-	import sys
+
+	level = logging.INFO if args.verbose else logging.WARNING
+	level = logging.DEBUG if args.debug else level
+	f = '%(module)-10s %(levelname)-8s %(message)s'
+	logging.basicConfig(format=f, level=level)
+
 	df = DexFile(args.dexpath)
 	func = df.getfunc(args.clazz, args.name, args.type)
 	dumpdot(func, args)

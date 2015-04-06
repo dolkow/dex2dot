@@ -8,6 +8,9 @@ from os.path import dirname, splitext, exists, getmtime, isfile, islink
 from select import select
 from subprocess import Popen, PIPE
 from tempfile import mkstemp
+
+import logging as log
+log = log.getLogger(__name__)
 import os
 import re
 import sys
@@ -34,6 +37,7 @@ class DexFile(object):
 			raise Exception('File does not exist', path);
 
 	def _do_disass(self, disass_path):
+		log.info('disassembling %s into %s', self.path, disass_path)
 		success = False
 		fd, tmppath = mkstemp(dir=dirname(disass_path), text=True)
 		try:
@@ -55,11 +59,13 @@ class DexFile(object):
 	def _get_disass_path(self):
 		dfile = splitext(self.path)[0] + '.disass'
 		need_new = True
+		log.info('checking for cached disassembly of %s', self.path)
 		if exists(dfile):
 			if islink(dfile) or not isfile(dfile):
 				raise Exception('not a normal file', dfile)
 
 			if getmtime(dfile) > getmtime(self.path):
+				log.info('found cached disassembly %s', dfile)
 				need_new = False
 		if need_new:
 			self._do_disass(dfile)
@@ -71,6 +77,7 @@ class DexFile(object):
 		# TODO: will need this eventually
 		#with open(self._get_disass_path(), encoding='utf-8-dex') as disass:
 		with open(self._get_disass_path()) as disass:
+			log.info('looking for function %s.%s%s', clazz, mname, mtype)
 			generator = (line.strip('\r\n') for line in disass)
 
 			classre = re.compile(r"^\s*#\d+\s*: \(in (L\S+;)\)$")
