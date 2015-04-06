@@ -90,7 +90,8 @@ def makeblocks(dexfile, fileoffset, code, catches):
 		if op.startswith('goto'):
 			addjmp(None, addr, int(arg.split()[0], 16))
 		elif op.startswith('if-'):
-			addjmp(True, addr, int(arg.split()[1], 16))
+			ix = 1 if op.endswith('z') else 2
+			addjmp(True, addr, int(arg.split()[ix], 16))
 		elif op == 'packed-switch' or op == 'sparse-switch':
 			table = int(arg.split()[1], 16)
 			assert table == addr + int(arg.split()[3], 16)
