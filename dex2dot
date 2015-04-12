@@ -39,8 +39,10 @@ def dumpdot(func, config):
 	log.info('  dumping blocks')
 	for block in blocks:
 		log.debug('    %s', block.name)
-		simplify(func, block, config)
 		attrs = {}
+		if 'move-exception' in block.ops:
+			attrs['color'] = COLOR_CATCH
+		simplify(func, block, config)
 		if block.ops:
 			ins = zip(block.addrs, map(esc, block.ops), map(esc, block.args))
 			ins = r'\l'.join('%04x: %-20s %s' % junk for junk in ins)
@@ -70,8 +72,6 @@ def dumpdot(func, config):
 				attrs['label'] = info
 			attrs['fontcolor'] = COLOR_IMPLICIT
 			attrs['style'] = 'dashed'
-		if 'move-exception' in block.ops:
-			attrs['color'] = COLOR_CATCH
 		print(block.name, join(attrs))
 
 	# then, all the edges
