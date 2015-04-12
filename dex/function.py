@@ -2,6 +2,8 @@
 #coding=utf8
 
 from .basicblock import makeblocks
+import logging as log
+log = log.getLogger(__name__)
 import re
 
 class Function(object):
@@ -96,6 +98,12 @@ def parseinfo(info, regcount):
 		assert start < end
 		local[reg].append(var)
 
+	log.debug('locals:')
+	for regno, regions in enumerate(local):
+		log.debug('  register #%d:', regno)
+		for region in regions:
+			stuff = (region.start, region.end, region.name, region.type)
+			log.debug('    %04x-%04x: %s (%s)', *stuff)
 	return catches, positions, local
 
 def parsemeta(code):

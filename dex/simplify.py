@@ -34,7 +34,7 @@ class RegReplacer(object):
 		try:
 			for region in self.replacements[reg]:
 				if self.addr in region:
-					return string, region.name
+					return string, 'v%d_%s' % (reg, region.name)
 		except KeyError:
 			pass # had no mappings for that register
 		return string, 'v%d' % reg
@@ -188,7 +188,6 @@ def simplify(func, block, config):
 				op = 'if %s %s %s: goto %s' % (a, cmpop, b, dst)
 			args = ''
 		elif op == 'move-exception':
-			REG.addr = addr+1 # ugly hack; this instr is not in the var's range
 			args, var = expect(args, REG)
 			op = '%s = <caught exception>' % var
 			args = ''
